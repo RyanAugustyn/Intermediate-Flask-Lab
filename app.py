@@ -54,11 +54,58 @@ class Instructor(db.Model):
 
 
 # Schemas
+class StudentSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "first_name", "last_name", "year", "gpa")
 
+
+student_schema = StudentSchema()
+students_schema = StudentSchema(many=True)
+
+class StudentNameSchema(ma.Schema):
+    class Meta:
+        fields = ("first_name", "last_name")
+
+student_name_schema = StudentNameSchema(many=True)
+
+class CourseSchema(ma.Schema):
+    student_list = ma.Nested(StudentNameSchema, many=True)
+    class Meta:
+        fields = ("id", "name", "instructor_id", "credits", "instructor", "students")
 
 # Resources
+class StudentListResource(Resource):
+    def get(self):
+        
+        order = request.args.get('order')
 
+        query = Student.query
+        if order:
+            query = query.order_by(order)
+        students = query.all()
+        return students_schema.dump(students)
+    
+
+class FullCourseDetailResource(Resource):
+    def get(self, course_id):
+        custom_response = {}
+
+        course = Course.query.get_or_404(course_id)
+        
+
+        custom_response = {
+                "course_name": course.name,
+                "instructor_name": course.instructor.first_name + " " + course.instructor.last_name,
+                "students": course.students
+            }
+        return custom_response, 200
+        
+#student info, a nested dict with two keys: number_of_students (length of student list)
+#and students(list of smaller dicts each containing serialized first/last name)-will
+#need to serialize the student data using Student Name Schema
+#return the custom dict along with 200 code
 
 # Routes
-
+api.add_resource(StudentListResource, '/api/students')
+api.add_resource(FullCourseDetailResource, '/api/course_details/<int:course_id>')
 
